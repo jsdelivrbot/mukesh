@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+ <html>
+      <head>
+               <title> Yehbook </title>
+                
+                <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700%7CRoboto%7CJosefin+Sans:100,200,300,400,500">
+                <script src="https://unpkg.com/scrollreveal/dist/scrollreveal.min.js"></script>
+                <link rel="stylesheet" type="text/css" href="/stylesheets/main.css">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <meta name="description" content="">
+                <meta name="author" content="">
+                <link type="text/css" rel="stylesheet" href="/stylesheets/jquery.miniColors.css" />
+                <link href="/stylesheets/bootstrap.min.css" rel="stylesheet">
+                <link href="/stylesheets/bootstrap-responsive.min.css" rel="stylesheet">
+
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script> 
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/1.7.22/fabric.min.js"></script>
+  <script type="text/javascript">
+
+var canvas;
+var tshirts = new Array(); //prototype: [{style:'x',color:'white',front:'a',back:'b',price:{tshirt:'12.95',frontPrint:'4.99',backPrint:'4.99',total:'22.47'}}]
+var a;
+var b;
+var line1;
+var line2;
+var line3;
+var line4;
+ 	$(document).ready(function() {
+		//setup front side canvas 
+ 		canvas = new fabric.Canvas('tcanvas', {
+		  hoverCursor: 'pointer',
+		  selection: true,
+		  selectionBorderColor:'blue'
+		});
+ 		canvas.on({
+			 'object:moving': function(e) {		  	
+			    e.target.opacity = 0.5;
+			  },
+			  'object:modified': function(e) {		  	
+			    e.target.opacity = 1;
+			  },
+			 'object:selected':onObjectSelected,
+			 'selection:cleared':onSelectedCleared
+		 });
+		// piggyback on `canvas.findTarget`, to fire "object:over" and "object:out" events
+ 		canvas.findTarget = (function(originalFn) {
+		  return function() {
+		    var target = originalFn.apply(this, arguments);
+		    if (target) {
+		      if (this._hoveredTarget !== target) {
+		    	  canvas.fire('object:over', { target: target });
+		        if (this._hoveredTarget) {
+		        	canvas.fire('object:out', { target: this._hoveredTarget });
+		        }
+		        this._hoveredTarget = target;
+		      }
+		    }
+		    else if (this._hoveredTarget) {
+		    	canvas.fire('object:out', { target: this._hoveredTarget });
+		      this._hoveredTarget = null;
+		    }
+		    return target;
+		  };
+		})(canvas.findTarget);
+
+ 		canvas.on('object:over', function(e) {		
+		  //e.target.setFill('red');
+		  //canvas.renderAll();
+		});
+		
+ 		canvas.on('object:out', function(e) {		
+		  //e.target.setFill('green');
+		  //canvas.renderAll();
+		});
+		 		 	 
+		document.getElementById('add-text').onclick = function() {
+			var text = $("#text-string").val();
+		    var textSample = new fabric.Text(text, {
+		      left: fabric.util.getRandomInt(0, 200),
+		      top: fabric.util.getRandomInt(0, 400),
+		      fontFamily: 'helvetica',
+		      angle: 0,
+		      fill: '#000000',
+		      scaleX: 0.5,
+		      scaleY: 0.5,
+		      fontWeight: '',
+	  		  hasRotatingPoint:true
+		    });		    
+            canvas.add(textSample);	
+            canvas.item(canvas.item.length-1).hasRotatingPoint = true;    
+            $("#texteditor").css('display', 'block');
+            $("#imageeditor").css('display', 'block');
+	  	};
+	  	$("#text-string").keyup(function(){	  		
+	  		var activeObject = canvas.getActiveObject();
+		      if (activeObject && activeObject.type === 'text') {
+		    	  activeObject.text = this.value;
+		    	  canvas.renderAll();
+		      }
+	  	});
+	  	$(".img-polaroid").click(function(e){
+	  		var el = e.target;
+	  		/*temp code*/
+	  		var offset = 50;
+	        var left = fabric.util.getRandomInt(0 + offset, 200 - offset);
+	        var top = fabric.util.getRandomInt(0 + offset, 400 - offset);
+	        var angle = fabric.util.getRandomInt(-20, 40);
+	        var width = fabric.util.getRandomInt(30, 50);
+	        var opacity = (function(min, max){ return Math.random() * (max - min) + min; })(0.5, 1);
+	        
+	  		fabric.Image.fromURL(el.src, function(image) {
+		          image.set({
+		            left: left,
+		            top: top,
+		            angle: 0,
+		            padding: 10,
+		            cornersize: 10,
+	      	  		hasRotatingPoint:true
+		          });
+		          //image.scale(getRandomNum(0.1, 0.25)).setCoords();
+		          canvas.add(image);
+		        });
+	  	});	  		  
+	  document.getElementById('remove-selected').onclick = function() {		  
+		    var activeObject = canvas.getActiveObject(),
+		        activeGroup = canvas.getActiveGroup();
+		    if (activeObject) {
+		      canvas.remove(activeObject);
+		      $("#text-string").val("");
+		    }
+		    else if (activeGroup) {
+		      var objectsInGroup = activeGroup.getObjects();
+		      canvas.discardActiveGroup();
+		      objectsInGroup.forEach(function(object) {
+		        canvas.remove(object);
+		      });
+		    }
+	  };
+	  document.getElementById('bring-to-front').onclick = function() {		  
+		    var activeObject = canvas.getActiveObject(),
+		        activeGroup = canvas.getActiveGroup();
+		    if (activeObject) {
+		      activeObject.bringToFront();
+		    }
+		    else if (activeGroup) {
+		      var objectsInGroup = activeGroup.getObjects();
+		      canvas.discardActiveGroup();
+		      objectsInGroup.forEach(function(object) {
+		        object.bringToFront();
+		      });
+		    }
+	  };
+	  document.getElementById('send-to-back').onclick = function() {		  
+		    var activeObject = canvas.getActiveObject(),
+		        activeGroup = canvas.getActiveGroup();
+		    if (activeObject) {
+		      activeObject.sendToBack();
+		    }
+		    else if (activeGroup) {
+		      var objectsInGroup = activeGroup.getObjects();
+		      canvas.discardActiveGroup();
+		      objectsInGroup.forEach(function(object) {
+		        object.sendToBack();
+		      });
+		    }
+	  };		  
+	  $("#text-bold").click(function() {		  
+		  var activeObject = canvas.getActiveObject();
+		  if (activeObject && activeObject.type === 'text') {
+		    activeObject.fontWeight = (activeObject.fontWeight == 'bold' ? '' : 'bold');		    
+		    canvas.renderAll();
+		  }
+		});
+	  $("#text-italic").click(function() {		 
+		  var activeObject = canvas.getActiveObject();
+		  if (activeObject && activeObject.type === 'text') {
+			  activeObject.fontStyle = (activeObject.fontStyle == 'italic' ? '' : 'italic');		    
+		    canvas.renderAll();
+		  }
+		});
+	  $("#text-strike").click(function() {		  
+		  var activeObject = canvas.getActiveObject();
+		  if (activeObject && activeObject.type === 'text') {
+			  activeObject.textDecoration = (activeObject.textDecoration == 'line-through' ? '' : 'line-through');
+		    canvas.renderAll();
+		  }
+		});
+	  $("#text-underline").click(function() {		  
+		  var activeObject = canvas.getActiveObject();
+		  if (activeObject && activeObject.type === 'text') {
+			  activeObject.textDecoration = (activeObject.textDecoration == 'underline' ? '' : 'underline');
+		    canvas.renderAll();
+		  }
+		});
+	  $("#text-left").click(function() {		  
+		  var activeObject = canvas.getActiveObject();
+		  if (activeObject && activeObject.type === 'text') {
+			  activeObject.textAlign = 'left';
+		    canvas.renderAll();
+		  }
+		});
+	  $("#text-center").click(function() {		  
+		  var activeObject = canvas.getActiveObject();
+		  if (activeObject && activeObject.type === 'text') {
+			  activeObject.textAlign = 'center';		    
+		    canvas.renderAll();
+		  }
+		});
+	  $("#text-right").click(function() {		  
+		  var activeObject = canvas.getActiveObject();
+		  if (activeObject && activeObject.type === 'text') {
+			  activeObject.textAlign = 'right';		    
+		    canvas.renderAll();
+		  }
+		});	  
+	  $("#font-family").change(function() {
+	      var activeObject = canvas.getActiveObject();
+	      if (activeObject && activeObject.type === 'text') {
+	        activeObject.fontFamily = this.value;
+	        canvas.renderAll();
+	      }
+	    });	  
+		// $('#text-bgcolor').miniColors({
+		// 	change: function(hex, rgb) {
+		// 	  var activeObject = canvas.getActiveObject();
+		//       if (activeObject && activeObject.type === 'text') {
+		//     	  activeObject.backgroundColor = this.value;
+		//         canvas.renderAll();
+		//       }
+		// 	},
+		// 	open: function(hex, rgb) {
+		// 		//
+		// 	},
+		// 	close: function(hex, rgb) {
+		// 		//
+		// 	}
+		// });		
+		// $('#text-fontcolor').miniColors({
+		// 	change: function(hex, rgb) {
+		// 	  var activeObject = canvas.getActiveObject();
+		//       if (activeObject && activeObject.type === 'text') {
+		//     	  activeObject.fill = this.value;
+		//     	  canvas.renderAll();
+		//       }
+		// 	},
+		// 	open: function(hex, rgb) {
+		// 		//
+		// 	},
+		// 	close: function(hex, rgb) {
+		// 		//
+		// 	}
+		// });
+		
+		// $('#text-strokecolor').miniColors({
+		// 	change: function(hex, rgb) {
+		// 	  var activeObject = canvas.getActiveObject();
+		//       if (activeObject && activeObject.type === 'text') {
+		//     	  activeObject.strokeStyle = this.value;
+		//     	  canvas.renderAll();
+		//       }
+		// 	},
+		// 	open: function(hex, rgb) {
+		// 		//
+		// 	},
+		// 	close: function(hex, rgb) {
+		// 		//
+		// 	}
+		// });
+	
+		//canvas.add(new fabric.fabric.Object({hasBorders:true,hasControls:false,hasRotatingPoint:false,selectable:false,type:'rect'}));
+	   $("#drawingArea").hover(
+	        function() { 	        	
+	        	 canvas.add(line1);
+		         canvas.add(line2);
+		         canvas.add(line3);
+		         canvas.add(line4); 
+		         canvas.renderAll();
+	        },
+	        function() {	        	
+	        	 canvas.remove(line1);
+		         canvas.remove(line2);
+		         canvas.remove(line3);
+		         canvas.remove(line4);
+		         canvas.renderAll();
+	        }
+	    );
+	   
+	   $('.color-preview').click(function(){
+		   var color = $(this).css("background-color");
+		   document.getElementById("shirtDiv").style.backgroundColor = color;		   
+	   });
+	   
+	   $('#flip').click(
+		   function() {			   
+			   	if ($(this).attr("data-original-title") == "Show Back View") {
+			   		$(this).attr('data-original-title', 'Show Front View');			        		       
+			        $("#tshirtFacing").attr("src","img/crew_back.png");			        
+			        a = JSON.stringify(canvas);
+			        canvas.clear();
+			        try
+			        {
+			           var json = JSON.parse(b);
+			           canvas.loadFromJSON(b);
+			        }
+			        catch(e)
+			        {}
+			        
+			    } else {
+			    	$(this).attr('data-original-title', 'Show Back View');			    				    	
+			    	$("#tshirtFacing").attr("src","img/crew_front.png");			    	
+			    	b = JSON.stringify(canvas);
+			    	canvas.clear();
+			    	try
+			        {
+			           var json = JSON.parse(a);
+			           canvas.loadFromJSON(a);			           
+			        }
+			        catch(e)
+			        {}
+			    }		
+			   	canvas.renderAll();
+			   	setTimeout(function() {
+			   		canvas.calcOffset();
+			    },200);			   	
+        });	   
+	   $(".clearfix button,a").tooltip();
+	   line1 = new fabric.Line([0,0,200,0], {"stroke":"#000000", "strokeWidth":1,hasBorders:false,hasControls:false,hasRotatingPoint:false,selectable:false});
+	   line2 = new fabric.Line([199,0,200,399], {"stroke":"#000000", "strokeWidth":1,hasBorders:false,hasControls:false,hasRotatingPoint:false,selectable:false});
+	   line3 = new fabric.Line([0,0,0,400], {"stroke":"#000000", "strokeWidth":1,hasBorders:false,hasControls:false,hasRotatingPoint:false,selectable:false});
+	   line4 = new fabric.Line([0,400,200,399], {"stroke":"#000000", "strokeWidth":1,hasBorders:false,hasControls:false,hasRotatingPoint:false,selectable:false});
+	 });//doc ready
+	 
+	 
+	 function getRandomNum(min, max) {
+	    return Math.random() * (max - min) + min;
+	 }
+	 
+	 function onObjectSelected(e) {	 
+	    var selectedObject = e.target;
+	    $("#text-string").val("");
+	    selectedObject.hasRotatingPoint = true
+	    if (selectedObject && selectedObject.type === 'text') {
+	    	//display text editor	    	
+	    	$("#texteditor").css('display', 'block');
+	    	$("#text-string").val(selectedObject.getText());	    	
+	    	$('#text-fontcolor').miniColors('value',selectedObject.fill);
+	    	$('#text-strokecolor').miniColors('value',selectedObject.strokeStyle);	
+	    	$("#imageeditor").css('display', 'block');
+	    }
+	    else if (selectedObject && selectedObject.type === 'image'){
+	    	//display image editor
+	    	$("#texteditor").css('display', 'none');	
+	    	$("#imageeditor").css('display', 'block');
+	    }
+	  }
+	 function onSelectedCleared(e){
+		 $("#texteditor").css('display', 'none');
+		 $("#text-string").val("");
+		 $("#imageeditor").css('display', 'none');
+	 }
+	 function setFont(font){
+		  var activeObject = canvas.getActiveObject();
+	      if (activeObject && activeObject.type === 'text') {
+	        activeObject.fontFamily = font;
+	        canvas.renderAll();
+	      }
+	  }
+	 function removeWhite(){
+		  var activeObject = canvas.getActiveObject();
+		  if (activeObject && activeObject.type === 'image') {			  
+			  activeObject.filters[2] =  new fabric.Image.filters.RemoveWhite({hreshold: 100, distance: 10});//0-255, 0-255
+			  activeObject.applyFilters(canvas.renderAll.bind(canvas));
+		  }	        
+	 }
+  </script>
+
+
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery-minicolors/2.2.6/jquery.minicolors.js"></script>
+
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-minicolors/2.2.6/jquery.minicolors.css">
+
+   
+
+   <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+
+    
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/2.3.2/css/bootstrap-responsive.min.css">
+
+
+
+	 <style type="text/css">
+		 
+		  #d1{
+            display:inline-block;
+		  }
+
+
+         #d2{
+            display:inline-block;
+		  }
+
+
+         #d3{
+            display:inline-block;
+		  }
+
+		  #newbody {
+	        padding-top: 60px;	        
+	      }
+	      .color-preview {
+	      	border: 1px solid #CCC;
+	      	margin: 2px;
+	      	zoom: 1;
+	      	vertical-align: top;
+	      	display: inline-block;
+	      	cursor: pointer;
+	      	overflow: hidden;
+	      	width: 20px;
+	      	height: 20px;
+	      }
+           
+          #priceList {
+
+          	float: left;
+          }
+
+
+	      .rotate {  
+		    -webkit-transform:rotate(90deg);
+		    -moz-transform:rotate(90deg);
+		    -o-transform:rotate(90deg);
+		    /* filter:progid:DXImageTransform.Microsoft.BasicImage(rotation=1.5); */
+		    -ms-transform:rotate(90deg);		   
+		}		
+		.Arial{font-family:"Arial";}
+		.Helvetica{font-family:"Helvetica";}
+		.MyriadPro{font-family:"Myriad Pro";}
+		.Delicious{font-family:"Delicious";}
+		.Verdana{font-family:"Verdana";}
+		.Georgia{font-family:"Georgia";}
+		.Courier{font-family:"Courier";}
+		.ComicSansMS{font-family:"Comic Sans MS";}
+		.Impact{font-family:"Impact";}
+		.Monaco{font-family:"Monaco";}
+		.Optima{font-family:"Optima";}
+		.HoeflerText{font-family:"Hoefler Text";}
+		.Plaster{font-family:"Plaster";}
+		.Engagement{font-family:"Engagement";}
+
+	 </style>
+
+  
+    </head>
+
+      <body>
+          <nav class="navbar navbar-default navbar-fixed-top ">
+    <div class="container-fluid">
+       <div class="navbar-header">
+        <a class="navbar-brand" href="/#showcase"> <strong>  LoGo </strong> </a>
+
+       </div>
+
+
+         <div class="collapse navbar-collapse">
+               <ul class="nav navbar-nav navbar-right">
+            <li><a href="/#showcase">Home</a></li>
+            <li><a href="/#info1">About</a></li>
+            <li><a href="/#contact">Contact</a></li>
+            <%     if(!currentUser)  {  %>
+
+                  <li> <a href="/login"> Login   </a> </li>
+                  <li> <a href="/register"> Sign Up </a> </li>
+                  
+           <%   } else {   %>
+                  
+                  <li><a href = "#"><%= currentUser.username %></a></li>
+                  <li><a href="/logout">LogOut</a></li>
+           <%     }       %>
+               </ul>
+
+         </div>
+
+    </div>
+
+      </nav>
+
+  
+  <div class="container">
+
+    <% if(error && error.length >0) { %>  
+      <div class="alert alert-danger" role="alert">
+   
+        <%= error %>
+    
+      </div>    
+
+     <% } %>
+
+
+    <% if(success && success.length > 0) { %>  
+      <div class="alert alert-success" role="alert">
+   
+        <%= success %>
+    
+      </div>    
+
+    <% } %>
+
+  </div>
+
+  
+  
+
+
+     <div id="newbody" class="preview" data-spy="scroll" data-target=".subnav" data-offset="80">
+     	
+
+ 
+    <div class="container">
+		<section id="typography">
+		  <div class="page-header">
+		    <h1>Customize T-Shirt</h1>
+		  </div>
+		
+		  <!-- Headings & Paragraph Copy -->
+		  <div class="row">			
+		    <div class="span3">
+		    	<div class="tabbable"> <!-- Only required for left/right tabs -->
+				  <ul class="nav nav-tabs">
+				  	<li class="active"><a href="#tab1" data-toggle="tab">T-Shirt Options</a></li>				    
+				    <li><a href="#tab2" data-toggle="tab">Gravatar</a></li>
+				  </ul>
+				  <div class="tab-content">
+				     <div class="tab-pane active" id="tab1">
+					      <div class="well">
+
+
+
+
+
+
+                              
+				    		<div class="input-append">
+							  <input class="span2" id="text-string" type="text" placeholder="add text here..."><button id="add-text" class="btn" title="Add text"><i class="icon-share-alt"></i></button>
+							  <hr>
+							</div>
+							<div id="avatarlist">
+					
+                                      	<img style="display: none; cursor:pointer;" class="img-polaroid" src="" id="image">
+                                 <input type="file" onchange="showImage.call(this)">
+                                  <script>
+	
+                                  	function showImage(){
+                                  		if(this.files && this.files[0]){
+                                  			var obj = new FileReader();
+                                  			obj.onload  = function(data){
+                                  				var image = document.getElementById("image");
+                                  
+                                  				image.src = data.target.result;
+                                  				image.style.display = "block";
+                                  			}
+                                  			obj.readAsDataURL(this.files[0]);
+                                  		}
+                                  	}
+                                  </script>
+
+     					   </div>
+ 							<ul class="nav">
+								<li id="d1" class="color-preview" title="White" style="background-color:#ffffff;"></li>
+								<li id="d1" class="color-preview" title="Dark Heather" style="background-color:#616161;"></li>
+								<li  id="d1"  class="color-preview" title="Gray" style="background-color:#f0f0f0;"></li>
+								<li  id="d1"  class="color-preview" title="Charcoal" style="background-color:#5b5b5b;"></li>
+								<li  id="d1"  class="color-preview" title="Black" style="background-color:#222222;"></li>
+								<li  id="d1"  class="color-preview" title="Heather Orange" style="background-color:#fc8d74;"></li>
+								<li  id="d2"  class="color-preview" title="Heather Dark Chocolate" style="background-color:#432d26;"></li>
+								<li  id="d2" class="color-preview" title="Salmon" style="background-color:#eead91;"></li>
+								<li id="d2" class="color-preview" title="Chesnut" style="background-color:#806355;"></li>
+								<li id="d2" class="color-preview" title="Dark Chocolate" style="background-color:#382d21;"></li>
+								<li id="d2" class="color-preview" title="Citrus Yellow" style="background-color:#faef93;"></li>
+								<li id="d2" class="color-preview" title="Avocado" style="background-color:#aeba5e;"></li>
+								<li id="d2" class="color-preview" title="Kiwi" style="background-color:#8aa140;"></li>
+								<li id="d3" class="color-preview" title="Irish Green" style="background-color:#1f6522;"></li>
+								<li id="d3" class="color-preview" title="Scrub Green" style="background-color:#13afa2;"></li>
+								<li id="d3" class="color-preview" title="Teal Ice" style="background-color:#b8d5d7;"></li>
+								<li id="d3" class="color-preview" title="Heather Sapphire" style="background-color:#15aeda;"></li>
+								<li id="d3" class="color-preview" title="Sky" style="background-color:#a5def8;"></li>
+								<li id="d3" class="color-preview" title="Antique Sapphire" style="background-color:#0f77c0;"></li>
+								<li id="d3" class="color-preview" title="Heather Navy" style="background-color:#3469b7;"></li>							
+								<li id="d3" class="color-preview" title="Cherry Red" style="background-color:#c50404;"></li>
+							</ul>
+						</div>			      
+				     </div>				   
+				  </div>
+				</div>				
+		    </div>		
+		    <div class="span6">		    
+		    		<div align="center" s id="d2"tyle="min-height: 32px;">
+		    			<div class="clearfix">
+							<div class="btn-group inline pull-left" id="texteditor" style="display:none">						  
+								<button id="font-family" class="btn dropdown-toggle" data-toggle="dropdown" title="Font Style"><i class="icon-font" style="width:19px;height:19px;"></i></button>		                      
+							    <ul class="dropdown-menu" role="menu" aria-labelledby="font-family-X">
+								    <li><a tabindex="-1" href="#" onclick="setFont('Arial');" class="Arial">Arial</a></li>
+								    <li><a tabindex="-1" href="#" onclick="setFont('Helvetica');" class="Helvetica">Helvetica</a></li>
+								    <li><a tabindex="-1" href="#" onclick="setFont('Myriad Pro');" class="MyriadPro">Myriad Pro</a></li>
+								    <li><a tabindex="-1" href="#" onclick="setFont('Delicious');" class="Delicious">Delicious</a></li>
+								    <li><a tabindex="-1" href="#" onclick="setFont('Verdana');" class="Verdana">Verdana</a></li>
+								    <li><a tabindex="-1" href="#" onclick="setFont('Georgia');" class="Georgia">Georgia</a></li>
+								    <li><a tabindex="-1" href="#" onclick="setFont('Courier');" class="Courier">Courier</a></li>
+								    <li><a tabindex="-1" href="#" onclick="setFont('Comic Sans MS');" class="ComicSansMS">Comic Sans MS</a></li>
+								    <li><a tabindex="-1" href="#" onclick="setFont('Impact');" class="Impact">Impact</a></li>
+								    <li><a tabindex="-1" href="#" onclick="setFont('Monaco');" class="Monaco">Monaco</a></li>
+								    <li><a tabindex="-1" href="#" onclick="setFont('Optima');" class="Optima">Optima</a></li>
+								    <li><a tabindex="-1" href="#" onclick="setFont('Hoefler Text');" class="Hoefler Text">Hoefler Text</a></li>
+								    <li><a tabindex="-1" href="#" onclick="setFont('Plaster');" class="Plaster">Plaster</a></li>
+								    <li><a tabindex="-1" href="#" onclick="setFont('Engagement');" class="Engagement">Engagement</a></li>
+				                </ul>
+							    <button id="text-bold" class="btn" data-original-title="Bold"><img src="img/font_bold.png" height="" width=""></button>
+							    <button id="text-italic" class="btn" data-original-title="Italic"><img src="img/font_italic.png" height="" width=""></button>
+							    <button id="text-strike" class="btn" title="Strike" style=""><img src="img/font_strikethrough.png" height="" width=""></button>
+							 	<button id="text-underline" class="btn" title="Underline" style=""><img src="img/font_underline.png"></button>
+							 	<a class="btn" href="#" rel="tooltip" data-placement="top" data-original-title="Font Color"><input type="hidden" id="text-fontcolor" class="color-picker" size="7" value="#000000"></a>
+						 		<a class="btn" href="#" rel="tooltip" data-placement="top" data-original-title="Font Border Color"><input type="hidden" id="text-strokecolor" class="color-picker" size="7" value="#000000"></a>
+								  <!--- Background <input type="hidden" id="text-bgcolor" class="color-picker" size="7" value="#ffffff"> --->
+							</div>							  
+							<div class="pull-right" align="" id="imageeditor" style="display:none">
+							  <div class="btn-group">										      
+							      <button class="btn" id="bring-to-front" title="Bring to Front"><i class="icon-fast-backward rotate" style="height:19px;"></i></button>
+							      <button class="btn" id="send-to-back" title="Send to Back"><i class="icon-fast-forward rotate" style="height:19px;"></i></button>
+							      <button id="flip" type="button" class="btn" title="Show Back View"><i class="icon-retweet" style="height:19px;"></i></button>
+							      <button id="remove-selected" class="btn" title="Delete selected item"><i class="icon-trash" style="height:19px;"></i></button>
+							  </div>
+							</div>			  
+						</div>												
+					</div>					  		
+				<!--	EDITOR      -->					
+					<div id="shirtDiv" class="page" style="width: 530px; height: 630px; position: relative; background-color: rgb(255, 255, 255);">
+						<img id="tshirtFacing" src="img/crew_front.png"></img>
+						<div id="drawingArea" style="position: absolute;top: 100px;left: 160px;z-index: 10;width: 200px;height: 400px;">					
+							<canvas id="tcanvas" width=200 height="400" class="hover" style="-webkit-user-select: none;"></canvas>
+						</div>
+					</div>
+<!--					<div id="shirtBack" class="page" style="width: 530px; height: 630px; position: relative; background-color: rgb(255, 255, 255); display:none;">-->
+<!--						<img src="img/crew_back.png"></img>-->
+<!--						<div id="drawingArea" style="position: absolute;top: 100px;left: 160px;z-index: 10;width: 200px;height: 400px;">					-->
+<!--							<canvas id="backCanvas" width=200 height="400" class="hover" style="-webkit-user-select: none;"></canvas>-->
+<!--						</div>-->
+<!--					</div>						-->
+								
+				<!--	/EDITOR		-->
+		    </div>
+
+
+
+
+
+            <div id="priceList" class="span3">
+		      <div class="well">
+		      	<h3>Total Prices</h3>
+			      <p>
+			      	<table class="table">
+			      		<tr>
+			      			<td>Short Sleeve</td>
+			      			<td align="right">$12.49</td>
+			      		</tr>
+			      		<tr>
+			      			<td>Front Design</td>
+			      			<td align="right">$4.99</td>
+			      		</tr>
+			      		<tr>
+			      			<td>Back Design</td>
+			      			<td align="right">$4.99</td>
+			      		</tr>
+			      		<tr>
+			      			<td><strong>Total</strong></td>
+			      			<td align="right"><strong>$22.47</strong></td>
+			      		</tr>
+			      	</table>			
+			      </p>
+					<button type="button" class="btn btn-large btn-block btn-success" name="addToTheBag" id="addToTheBag">Add to bag <i class="icon-briefcase icon-white"></i></button>
+		      </div>		      		       		   
+		    </div>
+
+
+
+		  </div>
+		
+		</section>
+    </div><!-- /container -->
+    
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery-minicolors/2.2.6/jquery.minicolors.js"></script>
+     </div>
+
+
+     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.1.1/js/bootstrap.min.js"></script>
+
+    <script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-35639689-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+
+
+
+
+
+<footer>
+	<p class="text-center"> yehBOok Copyright &copy; 2017</p>
+</footer>
+
+<script
+			  src="https://code.jquery.com/jquery-3.2.1.js"
+			  integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE="
+			  crossorigin="anonymous"></script>
+<script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script> 
+
+
+<script>
+    $(function() {
+      // Smooth Scrolling
+      $('a[href*="#"]:not([href="#"])').click(function() {
+        if (location.pathname.replace(/^\//,'') == this.pathname.replace(/^\//,'') && location.hostname == this.hostname) {
+          var target = $(this.hash);
+          target = target.length ? target : $('[name=' + this.hash.slice(1) +']');
+          if (target.length) {
+            $('html, body').animate({
+              scrollTop: target.offset().top
+            }, 1000);
+            return false;
+          }
+        }
+      });
+    });
+ </script>
+
+
+ 
+<script>
+        
+        window.sr = ScrollReveal();
+        sr.reveal('.navbar', {
+         
+         duration:   2000,
+         origin:    'bottom'
+
+        });
+
+        sr.reveal('.showcase-left', {
+         
+         duration:   2000,
+     //  delay:      500,
+         origin:    'top',
+         distance: '300px'
+
+        });
+
+        sr.reveal('.showcase-right', {
+         
+         duration:   2000,
+   //    delay:      2000,
+         origin:    'right',
+         distance: '300px'
+
+        });
+
+        sr.reveal('.showcase-btn', {
+         
+         duration:   2000,
+         delay:      700,
+         origin:    'right',
+         distance: '300px'
+
+        });
+
+        sr.reveal('#testimonial div', {
+         
+         duration:   2000,
+   //    delay:      2000,
+         origin:    'bottom'
+
+        });
+  
+
+         sr.reveal('.info-left', {
+         
+         duration:   2000,
+   //    delay:      2000,
+         origin:    'left',
+         distance: '300px',
+         viewFactor: 0.2
+
+        });
+
+
+        
+         sr.reveal('.info-right', {
+         
+         duration:   2000,
+   //    delay:      2000,
+         origin:    'right',
+         distance: '300px',
+         viewFactor: 0.2
+
+        });
+
+
+
+</script>
+      </body>
+ </html>
