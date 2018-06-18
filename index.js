@@ -17,8 +17,7 @@ var commentRoutes = require("./routes/comments");
 var Route   = require("./routes/route");
 //--------------------------------------------------------------------------------------------------------------------------
 
-//mongoose.connect("mongodb://localhost/mohit");  
-mongoose.connect("mongodb://lucky:lucky1234@ds147190.mlab.com:47190/mohit_custom_tshirt");  
+mongoose.connect("mongodb://localhost/mohit");  
 //mongodb://lucky:lucky1234@ds147190.mlab.com:47190/mohit_custom_tshirt
 
 
